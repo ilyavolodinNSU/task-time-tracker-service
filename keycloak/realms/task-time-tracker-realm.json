@@ -1,0 +1,79 @@
+{
+  "realm": "task-time-tracker",
+  "enabled": true,
+  "accessTokenLifespan": 300,
+  "accessCodeLifespan": 600,
+  "roles": {
+    "realm": [
+      {
+        "name": "employee",
+        "description": "Рядовой сотрудник",
+        "composite": false
+      },
+      {
+        "name": "manager",
+        "description": "Менеджер",
+        "composite": false
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "employee",
+      "enabled": true,
+      "email": "employee@persea.ru",
+      "emailVerified": true,
+      "firstName": "Employee",
+      "lastName": "User",
+      "credentials": [{
+        "type": "password",
+        "value": "employee123",
+        "temporary": false
+      }],
+      "requiredActions": [],
+      "realmRoles": ["employee"],
+      "attributes": {
+        "employeeId": ["1"]
+      }
+    },
+    {
+      "username": "manager",
+      "enabled": true,
+      "email": "manager@persea.ru",
+      "emailVerified": true,
+      "firstName": "Manager",
+      "lastName": "User",
+      "credentials": [{
+        "type": "password",
+        "value": "manager123",
+        "temporary": false
+      }],
+      "requiredActions": [],
+      "realmRoles": ["manager", "employee"],
+      "attributes": {
+        "employeeId": ["100"]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "task-time-tracker-api",
+      "name": "Task Time Tracker API",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "+"
+      }
+    }
+  ],
+  "attributes": {
+    "frontendUrl": "http://keycloak:8080"
+  }
+}

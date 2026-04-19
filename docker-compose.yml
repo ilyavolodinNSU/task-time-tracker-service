@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:18
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tasktimetracker_service
+    volumes:
+      - pgdata:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tasktimetracker_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5
+    ports:
+      - 8081:8080
+    command: start-dev --import-realm
+    environment:
+      KC_HOSTNAME_STRICT: false        
+      KC_HOSTNAME_STRICT_HTTPS: false 
+      KC_HOSTNAME: localhost
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_FEATURES: token-exchange
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import
+  task-time-tracker-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-time-tracker
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

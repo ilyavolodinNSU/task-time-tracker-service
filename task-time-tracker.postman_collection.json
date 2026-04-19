@@ -1,0 +1,534 @@
+{
+  "info": {
+    "_postman_id": "task-time-tracker-api-v2",
+    "name": "Task Time Tracker API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8083", "type": "string" },
+    { "key": "keycloakUrl", "value": "http://localhost:8081", "type": "string" },
+    { "key": "realm", "value": "task-time-tracker", "type": "string" },
+    { "key": "clientId", "value": "task-time-tracker-api", "type": "string" },
+    { "key": "managerUsername", "value": "manager", "type": "string" },
+    { "key": "managerPassword", "value": "manager123", "type": "string" },
+    { "key": "employeeUsername", "value": "employee", "type": "string" },
+    { "key": "employeePassword", "value": "employee123", "type": "string" },
+    { "key": "taskId", "value": "0", "type": "string" },
+    { "key": "managerToken", "value": "", "type": "string" },
+    { "key": "employeeToken", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Аутентификация",
+      "item": [
+        {
+          "name": "Получить токен менеджера",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Есть access_token', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.environment.set('managerToken', json.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "{{clientId}}", "type": "text" },
+                { "key": "username", "value": "{{managerUsername}}", "type": "text" },
+                { "key": "password", "value": "{{managerPassword}}", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Получить токен сотрудника",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Есть access_token', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.environment.set('employeeToken', json.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "{{clientId}}", "type": "text" },
+                { "key": "username", "value": "{{employeeUsername}}", "type": "text" },
+                { "key": "password", "value": "{{employeePassword}}", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Задачи",
+      "item": [
+        {
+          "name": "Создание задачи (требуется MANAGER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Возвращен ID задачи', () => pm.expect(json.id).to.be.a('number'));",
+                  "pm.test('Статус равен NEW', () => pm.expect(json.status).to.eql('NEW'));",
+                  "pm.environment.set('taskId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Разработка REST API\",\n    \"description\": \"Создание сервиса учета рабочего времени\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/tasks", "host": ["{{baseUrl}}"], "path": ["api", "tasks"] }
+          }
+        },
+        {
+          "name": "Создание задачи без прав (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 403 Forbidden', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Не должно сработать\",\n    \"description\": \"Тест доступа\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/tasks", "host": ["{{baseUrl}}"], "path": ["api", "tasks"] }
+          }
+        },
+        {
+          "name": "Получение задачи по ID (требуется EMPLOYEE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('ID совпадает с созданным', () => pm.expect(json.id).to.eql(pm.environment.get('taskId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}"] }
+          }
+        },
+        {
+          "name": "Обновление статуса (требуется MANAGER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 204 No Content', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"status\": \"IN_PROGRESS\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}", "status"] }
+          }
+        },
+        {
+          "name": "Обновление статуса без прав (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 403 Forbidden', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"status\": \"DONE\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Записи времени",
+      "item": [
+        {
+          "name": "Создание записи времени (требуется MANAGER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Запись содержит ID', () => pm.expect(json.id).to.be.a('number'));",
+                  "pm.test('Task ID совпадает', () => pm.expect(json.taskId).to.eql(pm.environment.get('taskId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"employeeId\": 1,\n    \"taskId\": {{taskId}},\n    \"startTime\": \"2026-04-19T09:00:00\",\n    \"endTime\": \"2026-04-19T10:30:00\",\n    \"workDescription\": \"Написание контроллеров\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/time-records", "host": ["{{baseUrl}}"], "path": ["api", "time-records"] }
+          }
+        },
+        {
+          "name": "Создание записи без прав (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 403 Forbidden', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"employeeId\": 1,\n    \"taskId\": {{taskId}},\n    \"startTime\": \"2026-04-19T11:00:00\",\n    \"endTime\": \"2026-04-19T12:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/time-records", "host": ["{{baseUrl}}"], "path": ["api", "time-records"] }
+          }
+        },
+        {
+          "name": "Получение записей за период (требуется EMPLOYEE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Возвращен массив', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Массив не пустой', () => pm.expect(pm.response.json().length).to.be.greaterThan(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/time-records?employeeId=1&start=2026-04-19T00:00:00&end=2026-04-19T23:59:59",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "time-records"],
+              "query": [
+                { "key": "employeeId", "value": "1" },
+                { "key": "start", "value": "2026-04-19T00:00:00" },
+                { "key": "end", "value": "2026-04-19T23:59:59" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Тестирование ошибок",
+      "item": [
+        {
+          "name": "Создание задачи с пустым названием",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Ошибки валидации присутствуют', () => pm.expect(pm.response.json()).to.have.property('title'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"title\": \"\",\n    \"description\": \"Тест валидации\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks", "host": ["{{baseUrl}}"], "path": ["api", "tasks"] }
+          }
+        },
+        {
+          "name": "Получение несуществующей задачи",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Сообщение об ошибке содержит Not Found', () => pm.expect(pm.response.json().message).to.include('not found'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/tasks/99999", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "99999"] }
+          }
+        },
+        {
+          "name": "Подготовка: Перевод задачи в DONE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 204 No Content', () => pm.response.to.have.status(204));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"status\": \"DONE\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}", "status"] }
+          }
+        },
+        {
+          "name": "Обновление статуса готовой задачи",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Сообщение о блокировке смены статуса', () => pm.expect(pm.response.json().message).to.include('Cannot change status'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"status\": \"IN_PROGRESS\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}", "status"] }
+          }
+        },
+        {
+          "name": "Создание записи: время окончания раньше начала",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Сообщение об ошибке корректно', () => pm.expect(pm.response.json().message).to.include('End time must be after start time'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"employeeId\": 1,\n    \"taskId\": {{taskId}},\n    \"startTime\": \"2026-04-19T12:00:00\",\n    \"endTime\": \"2026-04-19T10:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/time-records", "host": ["{{baseUrl}}"], "path": ["api", "time-records"] }
+          }
+        },
+        {
+          "name": "Создание записи для несуществующей задачи",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"employeeId\": 1,\n    \"taskId\": 99999,\n    \"startTime\": \"2026-04-19T08:00:00\",\n    \"endTime\": \"2026-04-19T09:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/time-records", "host": ["{{baseUrl}}"], "path": ["api", "time-records"] }
+          }
+        },
+        {
+          "name": "Получение записей с некорректным периодом",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 400 или 409', () => pm.expect([400, 409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{employeeToken}}" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/time-records?employeeId=1&start=2026-04-20T00:00:00&end=2026-04-19T00:00:00",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "time-records"],
+              "query": [
+                { "key": "employeeId", "value": "1" },
+                { "key": "start", "value": "2026-04-20T00:00:00" },
+                { "key": "end", "value": "2026-04-19T00:00:00" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Проверка ролевой модели",
+      "item": [
+        {
+          "name": "GET /api/tasks без токена (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}"] }
+          }
+        },
+        {
+          "name": "POST /api/tasks с невалидным токеном (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "invalid.token.here" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"title\": \"Тест\",\n    \"description\": \"Тест\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks", "host": ["{{baseUrl}}"], "path": ["api", "tasks"] }
+          }
+        },
+        {
+          "name": "Проверка: менеджер может читать задачи (имеет обе роли)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Статус 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{managerToken}}" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "{{taskId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
