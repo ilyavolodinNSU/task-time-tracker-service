@@ -121,7 +121,7 @@ curl -X POST http://localhost:8081/realms/task-time-tracker/protocol/openid-conn
 Интеграционные тесты автоматически поднимают изолированный контейнер PostgreSQL, применяют миграции и откатывают транзакции после каждого тестового метода, обеспечивая полную изоляцию данных.
 
 ## Документация API и Postman
-В корень репозитория добавлена коллекция запросов: `task-time-tracker.postman_collection.json`.
+В папку `postman` добавлена коллекция запросов: `task-time-tracker.postman_collection.json`.
 
 **Как использовать:**
 1. Импортируйте файл в Postman (`Import` -> `File`).
