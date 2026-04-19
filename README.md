@@ -8,7 +8,7 @@
 | Язык | Java 21 |
 | Фреймворк | Spring Boot, Spring WebMVC, Spring Security (OAuth2 Resource Server) |
 | Работа с БД | MyBatis 4.0.1, Flyway (миграции), PostgreSQL 18 |
-| Аутентификация | Keycloak 26.5 (OIDC, JWT Bearer) |
+| Аутентификация | Keycloak 26.5 (OAuth2.1, OIDC, PKCE + RTR) |
 | Документация | SpringDoc OpenAPI 3.0.2 |
 | Тестирование | JUnit 5, Mockito, AssertJ, TestContainers, JaCoCo |
 | Сборка и деплой | Apache Maven, Docker, Docker Compose v2, Multi-stage Dockerfile |
@@ -55,6 +55,16 @@ curl -X POST http://localhost:8081/realms/task-time-tracker/protocol/openid-conn
   -d "client_id=task-time-tracker-api&username=manager&password=manager123&grant_type=password" \
   -H "Content-Type: application/x-www-form-urlencoded"
 ```
+## Соответствие стандартам OAuth 2.1 и современные практики безопасности
+Проект спроектирован с учетом требований OAuth 2.1, который консолидирует лучшие практики аутентификации и закрепляет их как обязательные. Интеграция с Keycloak обеспечивает следующие механизмы защиты:
+
+- **PKCE (Proof Key for Code Exchange)**: Обязателен для всех публичных клиентов (SPA, мобильные приложения). Вместо Implicit Flow используется Authorization Code Flow с параметрами `code_challenge` и `code_verifier`. Это полностью исключает возможность перехвата авторизационного кода через браузерный журнал, history или referrer-заголовки. В OAuth 2.1 поддержка PKCE является обязательным требованием для клиентских приложений.
+- **Refresh Token Rotation (RTR)**: При каждом запросе на обновление Access Token сервер выдает новую пару токенов, а использованный Refresh Token немедленно аннулируется. Если злоумышленник пытается использовать украденный Refresh Token после его легитимной ротации, сервер отклоняет запрос и инициирует принудительный отзыв всех активных сессий пользователя (Detection of Token Theft). Настроено через параметр `refreshTokenMaxReuse: 0` в конфигурации рилма.
+- **Строгая валидация токенов**: Ресурс-сервер проверяет соответствие поля `iss` в JWT значению `issuer-uri`, валидирует цифровую подпись через JWK Set, а также сверяет `aud` (client_id). Конвертер авторизаций извлекает роли исключительно из доверенного клейма `realm_access.roles`, что предотвращает инъекцию прав через недоверенные источники.
+- **Конфигурация клиента**: Клиент `task-time-tracker-api` зарегистрирован как `publicClient`. Для локальной разработки включен `directAccessGrantsEnabled` (Resource Owner Password Credentials), однако для production-развертывания рекомендуется использовать только Authorization Code Flow с PKCE. Время жизни Access Token ограничено 5 минутами для минимизации окна атаки при компрометации.
+
+**Рекомендация для интеграции с SPA**: Для фронтенд-приложений используйте библиотеки с нативной поддержкой OAuth 2.1 (например, `oidc-client-ts` или `@auth0/auth0-spa-js`). Они автоматически генерируют криптографически стойкий `code_verifier`, корректно обрабатывают ротацию рефреш-токенов и хранят состояние авторизации в `sessionStorage` или `httpOnly` cookie, исключая риск XSS-эксплуатации.
+
 Токен передается в заголовке всех защищённых запросов: `Authorization: Bearer <access_token>`
 
 ## Требования к окружению
